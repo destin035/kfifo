@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+/* vim: set ts=8 sw=8 noet tw=80 nowrap fdm=marker: */
 /*
  * A generic kernel FIFO implementation
  *
@@ -36,10 +37,28 @@
  * to lock the reader.
  */
 
+#ifdef __KERNEL__ /* {{{ */
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
 #include <linux/stddef.h>
 #include <linux/scatterlist.h>
+#else /* }}} */
+#include <stddef.h>
+#include <errno.h>
+
+#ifndef __must_check
+#define __must_check __attribute__((__warn_unused_result__))
+#endif
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
+#ifndef smp_wmb
+#define smp_wmb() __atomic_thread_fence(__ATOMIC_RELEASE)
+#endif
+
+#endif
 
 struct __kfifo {
 	unsigned int	in;
@@ -335,6 +354,7 @@ __kfifo_uint_must_check_helper( \
 }) \
 )
 
+#ifdef __KERNEL__ /* {{{ */
 /**
  * kfifo_alloc - dynamically allocates a new fifo buffer
  * @fifo: pointer to the fifo
@@ -369,6 +389,7 @@ __kfifo_int_must_check_helper( \
 	if (__is_kfifo_ptr(__tmp)) \
 		__kfifo_free(__kfifo); \
 })
+#endif /* }}} */
 
 /**
  * kfifo_init - initialize a fifo using a preallocated buffer
@@ -646,6 +667,7 @@ __kfifo_uint_must_check_helper( \
 #define kfifo_out_locked(fifo, buf, n, lock) \
 		kfifo_out_spinlocked(fifo, buf, n, lock)
 
+#ifdef __KERNEL__ /* {{{ */
 /**
  * kfifo_from_user - puts some data from user space into the fifo
  * @fifo: address of the fifo to be used
@@ -801,6 +823,7 @@ __kfifo_uint_must_check_helper( \
 	else \
 		__kfifo->out += __len / sizeof(*__tmp->type); \
 })
+#endif /* }}} */
 
 /**
  * kfifo_out_peek - gets some data from the fifo
@@ -828,10 +851,12 @@ __kfifo_uint_must_check_helper( \
 }) \
 )
 
+#ifdef __KERNEL__ /* {{{ */
 extern int __kfifo_alloc(struct __kfifo *fifo, unsigned int size,
 	size_t esize, gfp_t gfp_mask);
 
 extern void __kfifo_free(struct __kfifo *fifo);
+#endif /* }}} */
 
 extern int __kfifo_init(struct __kfifo *fifo, void *buffer,
 	unsigned int size, size_t esize);
@@ -842,6 +867,7 @@ extern unsigned int __kfifo_in(struct __kfifo *fifo,
 extern unsigned int __kfifo_out(struct __kfifo *fifo,
 	void *buf, unsigned int len);
 
+#ifdef __KERNEL__ /* {{{ */
 extern int __kfifo_from_user(struct __kfifo *fifo,
 	const void __user *from, unsigned long len, unsigned int *copied);
 
@@ -853,6 +879,7 @@ extern unsigned int __kfifo_dma_in_prepare(struct __kfifo *fifo,
 
 extern unsigned int __kfifo_dma_out_prepare(struct __kfifo *fifo,
 	struct scatterlist *sgl, int nents, unsigned int len);
+#endif /* }}} */
 
 extern unsigned int __kfifo_out_peek(struct __kfifo *fifo,
 	void *buf, unsigned int len);
@@ -863,6 +890,7 @@ extern unsigned int __kfifo_in_r(struct __kfifo *fifo,
 extern unsigned int __kfifo_out_r(struct __kfifo *fifo,
 	void *buf, unsigned int len, size_t recsize);
 
+#ifdef __KERNEL__ /* {{{ */
 extern int __kfifo_from_user_r(struct __kfifo *fifo,
 	const void __user *from, unsigned long len, unsigned int *copied,
 	size_t recsize);
@@ -880,6 +908,7 @@ extern unsigned int __kfifo_dma_out_prepare_r(struct __kfifo *fifo,
 	struct scatterlist *sgl, int nents, unsigned int len, size_t recsize);
 
 extern void __kfifo_dma_out_finish_r(struct __kfifo *fifo, size_t recsize);
+#endif /* }}} */
 
 extern unsigned int __kfifo_len_r(struct __kfifo *fifo, size_t recsize);
 

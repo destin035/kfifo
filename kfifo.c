@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+/* vim: set ts=8 sw=8 noet tw=80 nowrap fdm=marker: */
 /*
  * A generic kernel FIFO implementation
  *
  * Copyright (C) 2009/2010 Stefani Seibold <stefani@seibold.net>
  */
 
+#ifdef __KERNEL__ /* {{{ */
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/slab.h>
@@ -12,6 +14,23 @@
 #include <linux/log2.h>
 #include <linux/uaccess.h>
 #include <linux/kfifo.h>
+#else /* }}} */
+#include "kfifo.h"
+#include <string.h>
+
+#ifndef EXPORT_SYMBOL
+#define EXPORT_SYMBOL(sym)
+#endif
+
+#ifndef min
+#define min(x, y) ({				\
+	typeof(x) _min1 = (x);			\
+	typeof(y) _min2 = (y);			\
+	(void) (&_min1 == &_min2);		\
+	_min1 < _min2 ? _min1 : _min2; })
+#endif
+
+#endif
 
 /*
  * internal helper to calculate the unused elements in a fifo
@@ -21,6 +40,7 @@ static inline unsigned int kfifo_unused(struct __kfifo *fifo)
 	return (fifo->mask + 1) - (fifo->in - fifo->out);
 }
 
+#ifdef __KERNEL__ /* {{{ */
 int __kfifo_alloc(struct __kfifo *fifo, unsigned int size,
 		size_t esize, gfp_t gfp_mask)
 {
@@ -62,14 +82,17 @@ void __kfifo_free(struct __kfifo *fifo)
 	fifo->mask = 0;
 }
 EXPORT_SYMBOL(__kfifo_free);
+#endif /* }}} */
 
 int __kfifo_init(struct __kfifo *fifo, void *buffer,
 		unsigned int size, size_t esize)
 {
 	size /= esize;
 
+#ifdef __KERNEL__ /* {{{ */
 	if (!is_power_of_2(size))
 		size = rounddown_pow_of_two(size);
+#endif /* }}} */
 
 	fifo->in = 0;
 	fifo->out = 0;
@@ -172,6 +195,7 @@ unsigned int __kfifo_out(struct __kfifo *fifo,
 }
 EXPORT_SYMBOL(__kfifo_out);
 
+#ifdef __KERNEL__ /* {{{ */
 static unsigned long kfifo_copy_from_user(struct __kfifo *fifo,
 	const void __user *from, unsigned int len, unsigned int off,
 	unsigned int *copied)
@@ -378,6 +402,7 @@ unsigned int __kfifo_dma_out_prepare(struct __kfifo *fifo,
 	return setup_sgl(fifo, sgl, nents, len, fifo->out);
 }
 EXPORT_SYMBOL(__kfifo_dma_out_prepare);
+#endif /* }}} */
 
 unsigned int __kfifo_max_r(unsigned int len, size_t recsize)
 {
@@ -496,6 +521,7 @@ void __kfifo_skip_r(struct __kfifo *fifo, size_t recsize)
 }
 EXPORT_SYMBOL(__kfifo_skip_r);
 
+#ifdef __KERNEL__ /* {{{ */
 int __kfifo_from_user_r(struct __kfifo *fifo, const void __user *from,
 	unsigned long len, unsigned int *copied, size_t recsize)
 {
@@ -590,3 +616,4 @@ void __kfifo_dma_out_finish_r(struct __kfifo *fifo, size_t recsize)
 	fifo->out += len + recsize;
 }
 EXPORT_SYMBOL(__kfifo_dma_out_finish_r);
+#endif /* }}} */
